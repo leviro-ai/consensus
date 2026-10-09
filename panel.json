@@ -1,0 +1,115 @@
+{
+  "_comment": [
+    "Panel definition for the /consensus skill.",
+    "Each member is invoked once per round in an EMPTY ephemeral temp directory.",
+    "Placeholders: {prompt} = full self-contained prompt, {cwd} = the temp workdir,",
+    "{outfile} = <cwd>/answer.md (only used by members that set answer_file),",
+    "{model} and {thinking} = the member fields of the same name.",
+    "{model}/{thinking} are OPTIONAL: if the field is null or empty, that argv element and",
+    "the flag immediately before it are both dropped, so the tool falls back to its own",
+    "default. A literal \"\" in argv (claude --tools) is NOT a placeholder and is kept.",
+    "Every prompt is fully self-contained, so members need no file or network access.",
+    "Flags are chosen to strip each tool's local config so the panel starts symmetric:",
+    "  claude --safe-mode  -> ignores CLAUDE.md, skills, plugins, hooks, MCP",
+    "  claude --tools \"\"    -> disables all built-in tools",
+    "  codex --ignore-user-config --ignore-rules -> ignores ~/.codex/config.toml and .rules,",
+    "        which is why codex model and reasoning effort MUST be set explicitly here.",
+    "Inspect or change all of this with: consensus.py models [--set id.field=value]",
+    "Override per problem by adding a \"panel\" key to that problem's config.json."
+  ],
+  "members": [
+    {
+      "id": "claude",
+      "label": "Claude",
+      "model": "opus",
+      "thinking": "max",
+      "argv": [
+        "claude",
+        "-p",
+        "--safe-mode",
+        "--tools",
+        "",
+        "--no-session-persistence",
+        "--model",
+        "{model}",
+        "--effort",
+        "{thinking}",
+        "{prompt}"
+      ],
+      "timeout": 900,
+      "tuning": {
+        "model_flag": "--model",
+        "model_hint": "opus | sonnet | haiku | fable, or a full model id",
+        "thinking_flag": "--effort",
+        "thinking_values": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "isolation": "--safe-mode (no CLAUDE.md/skills/plugins/hooks/MCP), --tools \"\" (no tools)"
+      }
+    },
+    {
+      "id": "codex",
+      "label": "Codex",
+      "model": "gpt-5.6-sol",
+      "thinking": "high",
+      "argv": [
+        "codex",
+        "exec",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "-s",
+        "read-only",
+        "--cd",
+        "{cwd}",
+        "-m",
+        "{model}",
+        "-c",
+        "model_reasoning_effort=\"{thinking}\"",
+        "-o",
+        "{outfile}",
+        "{prompt}"
+      ],
+      "answer_file": "{outfile}",
+      "timeout": 900,
+      "tuning": {
+        "model_flag": "-m",
+        "model_hint": "a Codex model id, e.g. gpt-5.6-sol",
+        "thinking_flag": "-c model_reasoning_effort",
+        "thinking_values": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "isolation": "--ignore-user-config, --ignore-rules, -s read-only, --ephemeral"
+      }
+    },
+    {
+      "id": "gemini",
+      "label": "Gemini",
+      "model": null,
+      "thinking": null,
+      "argv": [
+        "gemini",
+        "-o",
+        "text",
+        "-m",
+        "{model}",
+        "-p",
+        "{prompt}"
+      ],
+      "timeout": 900,
+      "tuning": {
+        "model_flag": "-m",
+        "model_hint": "a Gemini model id; null uses the CLI default",
+        "isolation": "headless -p (tools needing approval are unavailable); empty workdir. No flag to skip ~/.gemini/settings.json or ~/.gemini/GEMINI.md"
+      }
+    }
+  ]
+}
